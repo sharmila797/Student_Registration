@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const Student = require("../models/student");
 const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
 
 const storage = multer.diskStorage({
   destination: "uploads/",
@@ -62,8 +64,27 @@ router.put("/:id", upload.single("profilePic"), async (req, res) => {
 // DELETE
 router.delete("/:id", async (req, res) => {
   try {
+    // Fetch the student to get the profilePic filename
+    const student = await Student.findById(req.params.id);
+    
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+    
+    // Delete the file from uploads folder if it exists
+    if (student.profilePic) {
+      const filePath = path.join(__dirname, "../uploads", student.profilePic);
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.log("File deletion warning:", err.message);
+          // Continue with database deletion even if file deletion fails
+        }
+      });
+    }
+    
+    // Delete from database
     await Student.findByIdAndDelete(req.params.id);
-    res.json({ message: "Deleted" });
+    res.json({ message: "Student and associated file deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
